@@ -1,6 +1,15 @@
-## 🎉 SwellSSH v2.0.0
+## 🎉 SwellSSH v2.1.0
 
 ### ✨ 主要变更
+
+#### 🚀 终端性能优化与主题定制（贡献者：[@david1025](https://github.com/david1025)）
+
+- 使用高效的环形缓冲区（Ring Buffer）替换原有回滚列表，大幅提升渲染性能
+- 实现了行版本控制和增量 UI 重绘，减少渲染开销
+- 优化 SSH 传输层，使用 Channel 异步队列和专用阻塞读取线程
+- 新增持久化的 `TerminalTheme` 主题系统与丰富的内置主题集合
+- 侧边栏新增字体和大小控件，支持实时更新
+- 修复代理对（Surrogate pairs）和 UTF-16 序列输入问题
 
 #### 🗂️ 导航栏 UI 全面重构（贡献者：[@david1025](https://github.com/david1025)）
 
@@ -25,7 +34,7 @@
 
 | 贡献者 | 内容 |
 |--------|------|
-| [@david1025](https://github.com/david1025) | 导航栏 UI 重构、连接选择器、空状态页优化（[PR #3](https://github.com/yaog6700-bit/Swell-SSH/pull/3)） |
+| [@david1025](https://github.com/david1025) | 终端性能优化、主题系统、字体定制（[PR #5](https://github.com/yaog6700-bit/Swell-SSH/pull/5)）；导航栏 UI 重构、连接选择器、空状态页优化（[PR #3](https://github.com/yaog6700-bit/Swell-SSH/pull/3)） |
 
 ---
 
