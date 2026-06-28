@@ -65,7 +65,12 @@ namespace SwellSSH
             GlobalToggleSidebarButton.Opacity = 0.4;
 
             // Pane open/close → sync connection list data
-            MainNav.PaneOpening += (_, _) => SyncPaneConnectionList();
+            MainNav.PaneOpening += (_, _) =>
+            {
+                SyncPaneConnectionList();
+                UpdateFloatingThemeToggleVisibility(isOpen: true);
+            };
+            MainNav.PaneClosing += (_, _) => UpdateFloatingThemeToggleVisibility(isOpen: false);
 
             // Navigation
             MainNav.SelectionChanged += MainNav_SelectionChanged;
@@ -231,14 +236,6 @@ namespace SwellSSH
 
             string? tag = item.Tag?.ToString();
 
-            if (tag == "theme_toggle")
-            {
-                _ = ToggleThemeAsync(ThemeToggleNavItem);
-                // Deselect immediately since this is a toggle action, not a page nav
-                MainNav.SelectedItem = null;
-                return;
-            }
-
             if (tag == "settings")
             {
                 OpenSettingsTabFromNav();
@@ -282,6 +279,7 @@ namespace SwellSSH
             if (this.Content is FrameworkElement root)
                 root.RequestedTheme = theme;
             UpdateTitleBarButtonColors();
+            UpdateThemeToggleIcons();
             ThemeChanged?.Invoke(theme);
         }
 
@@ -322,7 +320,9 @@ namespace SwellSSH
         {
             var settings = await _storage.LoadSettingsAsync();
             settings.AppTheme = theme == ElementTheme.Light ? "Light" : "Dark";
+            settings.ColorScheme = theme == ElementTheme.Light ? "Default Light" : "One Dark";
             await _storage.SaveSettingsAsync(settings);
+            TerminalSettings.NotifyGlobalSettingsChanged(settings);
         }
 
 
@@ -425,11 +425,9 @@ namespace SwellSSH
             }
         }
 
-        private async void ThemeToggleNavItem_Tapped(object sender, TappedRoutedEventArgs e)
+        private async void FloatingThemeToggleButton_Click(object sender, RoutedEventArgs e)
         {
-            e.Handled = true;
-            MainNav.SelectedItem = null;
-            await ToggleThemeAsync(ThemeToggleNavItem);
+            await ToggleThemeAsync(FloatingThemeToggleButton);
         }
 
         private void SettingsNavItem_Tapped(object sender, TappedRoutedEventArgs e)
@@ -465,6 +463,9 @@ namespace SwellSSH
         {
             if (_isThemeTransitioning) return;
             _isThemeTransitioning = true;
+
+            if (sourceElement == FloatingThemeToggleButton)
+                _ = AnimateThemeIconAsync(FloatingThemeToggleIcon);
 
             var actualTheme = GetActualTheme();
             var newTheme = actualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark;
@@ -566,16 +567,141 @@ namespace SwellSSH
 
         // ── Nav icon hover animations (ported from AnywhereWinUI) ────────────
 
-        // Theme toggle: Scale pulse
-        private void ThemeToggleNavItem_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        private void UpdateThemeToggleIcons()
         {
-            AnimateNavIconScale(ThemeToggleIcon, 1.22f, 300);
-        }
-        private void ThemeToggleNavItem_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            AnimateNavIconScale(ThemeToggleIcon, 1f, 250);
+            var actualTheme = GetActualTheme();
+            var glyph = actualTheme == ElementTheme.Dark ? "\uE706" : "\uE708";
+            var tooltip = actualTheme == ElementTheme.Dark ? "切换至浅色模式" : "切换至深色模式";
+
+            if (FloatingThemeToggleIcon != null)
+                FloatingThemeToggleIcon.Glyph = glyph;
+            if (FloatingThemeToggleButton != null)
+                ToolTipService.SetToolTip(FloatingThemeToggleButton, tooltip);
         }
 
+        private void UpdateFloatingThemeToggleVisibility(bool isOpen, bool animate = true)
+        {
+            if (FloatingThemeToggleButton == null) return;
+
+            if (animate)
+            {
+                FadeVisual(FloatingThemeToggleButton, isOpen ? 1f : 0f, 220);
+                return;
+            }
+
+            FloatingThemeToggleButton.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(FloatingThemeToggleButton);
+            visual.Opacity = isOpen ? 1f : 0f;
+        }
+
+        private static async Task AnimateThemeIconAsync(FontIcon? icon)
+        {
+            if (icon == null) return;
+
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(icon);
+            var compositor = visual.Compositor;
+
+            visual.StopAnimation("Scale.X");
+            visual.StopAnimation("Scale.Y");
+            visual.StopAnimation("RotationAngleInDegrees");
+
+            float cx = icon.ActualWidth > 0 ? (float)(icon.ActualWidth / 2) : 8f;
+            float cy = icon.ActualHeight > 0 ? (float)(icon.ActualHeight / 2) : 8f;
+            visual.CenterPoint = new System.Numerics.Vector3(cx, cy, 0f);
+
+            var easeIn = compositor.CreateCubicBezierEasingFunction(
+                new System.Numerics.Vector2(0.4f, 0f),
+                new System.Numerics.Vector2(1f, 1f));
+
+            var exitBatch = compositor.CreateScopedBatch(Microsoft.UI.Composition.CompositionBatchTypes.Animation);
+
+            var exitScaleX = compositor.CreateScalarKeyFrameAnimation();
+            exitScaleX.InsertKeyFrame(0f, 1f);
+            exitScaleX.InsertKeyFrame(1f, 0f, easeIn);
+            exitScaleX.Duration = TimeSpan.FromMilliseconds(180);
+
+            var exitScaleY = compositor.CreateScalarKeyFrameAnimation();
+            exitScaleY.InsertKeyFrame(0f, 1f);
+            exitScaleY.InsertKeyFrame(1f, 0f, easeIn);
+            exitScaleY.Duration = TimeSpan.FromMilliseconds(180);
+
+            var exitRotation = compositor.CreateScalarKeyFrameAnimation();
+            exitRotation.InsertKeyFrame(0f, 0f);
+            exitRotation.InsertKeyFrame(1f, 180f, easeIn);
+            exitRotation.Duration = TimeSpan.FromMilliseconds(180);
+
+            visual.StartAnimation("Scale.X", exitScaleX);
+            visual.StartAnimation("Scale.Y", exitScaleY);
+            visual.StartAnimation("RotationAngleInDegrees", exitRotation);
+
+            var exitTcs = new TaskCompletionSource<bool>();
+            exitBatch.Completed += (_, _) => exitTcs.TrySetResult(true);
+            exitBatch.End();
+            await exitTcs.Task;
+
+            visual.RotationAngleInDegrees = 180f;
+            visual.Scale = new System.Numerics.Vector3(0f, 0f, 1f);
+
+            var easeOut = compositor.CreateCubicBezierEasingFunction(
+                new System.Numerics.Vector2(0f, 0f),
+                new System.Numerics.Vector2(0.2f, 1f));
+
+            var enterBatch = compositor.CreateScopedBatch(Microsoft.UI.Composition.CompositionBatchTypes.Animation);
+
+            var enterScaleX = compositor.CreateScalarKeyFrameAnimation();
+            enterScaleX.InsertKeyFrame(0.00f, 0f);
+            enterScaleX.InsertKeyFrame(0.55f, 1.25f);
+            enterScaleX.InsertKeyFrame(0.75f, 0.92f);
+            enterScaleX.InsertKeyFrame(1.00f, 1f);
+            enterScaleX.Duration = TimeSpan.FromMilliseconds(400);
+
+            var enterScaleY = compositor.CreateScalarKeyFrameAnimation();
+            enterScaleY.InsertKeyFrame(0.00f, 0f);
+            enterScaleY.InsertKeyFrame(0.55f, 1.25f);
+            enterScaleY.InsertKeyFrame(0.75f, 0.92f);
+            enterScaleY.InsertKeyFrame(1.00f, 1f);
+            enterScaleY.Duration = TimeSpan.FromMilliseconds(400);
+
+            var enterRotation = compositor.CreateScalarKeyFrameAnimation();
+            enterRotation.InsertKeyFrame(0f, 180f);
+            enterRotation.InsertKeyFrame(1f, 360f, easeOut);
+            enterRotation.Duration = TimeSpan.FromMilliseconds(400);
+
+            visual.StartAnimation("Scale.X", enterScaleX);
+            visual.StartAnimation("Scale.Y", enterScaleY);
+            visual.StartAnimation("RotationAngleInDegrees", enterRotation);
+
+            var enterTcs = new TaskCompletionSource<bool>();
+            enterBatch.Completed += (_, _) => enterTcs.TrySetResult(true);
+            enterBatch.End();
+            await enterTcs.Task;
+
+            visual.RotationAngleInDegrees = 0f;
+            visual.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
+        }
+
+        private static void FadeVisual(UIElement element, float targetOpacity, double durationMs)
+        {
+            if (targetOpacity > 0f)
+                element.Visibility = Visibility.Visible;
+
+            var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(element);
+            var compositor = visual.Compositor;
+            var animation = compositor.CreateScalarKeyFrameAnimation();
+            animation.InsertKeyFrame(1f, targetOpacity);
+            animation.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+            var batch = compositor.CreateScopedBatch(Microsoft.UI.Composition.CompositionBatchTypes.Animation);
+            visual.StartAnimation("Opacity", animation);
+            batch.Completed += (_, _) =>
+            {
+                if (targetOpacity == 0f)
+                    element.Visibility = Visibility.Collapsed;
+            };
+            batch.End();
+        }
+
+        // Theme toggle: Scale pulse
         // Settings: Gear 180° spin
         private void SettingsNavItem_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {

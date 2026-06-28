@@ -933,8 +933,79 @@ else if (settings.ColorScheme == "Termark Light")
             if (_scrollOffset == 0 && (uint)cursorY < (uint)rows && (uint)cursorX < (uint)cols &&
                 FocusState != FocusState.Unfocused)
             {
-                DrawCursor(args.DrawingSession, cursorCell, cursorX, cursorY);
+                float cursorPixelX = GetCursorVisualX(sender, sources[cursorY], cursorX);
+                DrawCursor(args.DrawingSession, cursorCell, cursorPixelX, cursorY);
             }
+        }
+
+        private float GetCursorVisualX(CanvasControl canvas, TerminalRow? row, int cursorX)
+        {
+            if (row == null || cursorX <= 0 || _textFormat == null)
+                return (float)(cursorX * _charWidth);
+
+            TerminalCell[] cells;
+            lock (_session?.Buffer.SyncRoot ?? row)
+            {
+                int count = Math.Min(cursorX, row.Cells.Length);
+                cells = ArrayPool<TerminalCell>.Shared.Rent(count);
+                Array.Copy(row.Cells, cells, count);
+                cursorX = count;
+            }
+
+            try
+            {
+                var textChunk = new StringBuilder(cursorX);
+                int startX = 0;
+                int logicalWidth = 0;
+                TerminalCell currentAttr = cells[0];
+
+                for (int x = 0; x < cursorX; x++)
+                {
+                    TerminalCell cell = cells[x];
+                    if (cell.FgColor != currentAttr.FgColor || cell.BgColor != currentAttr.BgColor ||
+                        cell.IsBold != currentAttr.IsBold || cell.IsItalic != currentAttr.IsItalic ||
+                        cell.IsUnderline != currentAttr.IsUnderline)
+                    {
+                        textChunk.Clear();
+                        startX = x;
+                        logicalWidth = 0;
+                        currentAttr = cell;
+                    }
+
+                    if (cell.Char != '\0')
+                        textChunk.Append(cell.Char == 0 ? ' ' : cell.Char);
+                    logicalWidth++;
+                }
+
+                return (float)(startX * _charWidth +
+                    MeasureTextAdvance(canvas, textChunk.ToString(), logicalWidth));
+            }
+            finally
+            {
+                ArrayPool<TerminalCell>.Shared.Return(cells);
+            }
+        }
+
+        private double MeasureTextAdvance(CanvasControl canvas, string text, int logicalWidth)
+        {
+            if (_textFormat == null || logicalWidth <= 0)
+                return 0;
+
+            if (string.IsNullOrEmpty(text))
+                return logicalWidth * _charWidth;
+
+            if (string.IsNullOrWhiteSpace(text))
+                return Math.Max(logicalWidth, text.Length) * _charWidth;
+
+            const string sentinel = "M";
+            using var textLayout = new CanvasTextLayout(canvas, text + sentinel, _textFormat, 0.0f, 0.0f);
+            using var sentinelLayout = new CanvasTextLayout(canvas, sentinel, _textFormat, 0.0f, 0.0f);
+            double measured = textLayout.LayoutBounds.Width - sentinelLayout.LayoutBounds.Width;
+
+            if (double.IsNaN(measured) || measured <= 0)
+                return logicalWidth * _charWidth;
+
+            return measured;
         }
 
         private void DrawCachedRow(CanvasDrawingSession ds, TerminalCell[] cells, int cols, int selectionY)
@@ -969,27 +1040,28 @@ else if (settings.ColorScheme == "Termark Light")
                 DrawChunk(ds, textChunk.ToString(), startX, 0, currentAttr, logicalWidth);
         }
 
-        private void DrawCursor(CanvasDrawingSession ds, TerminalCell cell, int x, int y)
+        private void DrawCursor(CanvasDrawingSession ds, TerminalCell cell, float xPos, int y)
         {
             string text = cell.Char is '\0' or (char)0 ? " " : cell.Char.ToString();
+            float yPos = (float)(y * _charHeight);
             if (_settings.CursorStyle == "Underline")
             {
-                DrawChunk(ds, text, x, y, cell, 1);
-                ds.DrawLine((float)(x * _charWidth), (float)((y + 1) * _charHeight - 1),
-                    (float)((x + 1) * _charWidth), (float)((y + 1) * _charHeight - 1), _cursorColor, 2);
+                DrawChunkAt(ds, text, xPos, yPos, cell, 1);
+                ds.DrawLine(xPos, (float)((y + 1) * _charHeight - 1),
+                    (float)(xPos + _charWidth), (float)((y + 1) * _charHeight - 1), _cursorColor, 2);
             }
             else if (_settings.CursorStyle == "Bar")
             {
-                DrawChunk(ds, text, x, y, cell, 1);
-                ds.DrawLine((float)(x * _charWidth + 1), (float)(y * _charHeight),
-                    (float)(x * _charWidth + 1), (float)((y + 1) * _charHeight), _cursorColor, 2);
+                DrawChunkAt(ds, text, xPos, yPos, cell, 1);
+                ds.DrawLine(xPos + 1, yPos,
+                    xPos + 1, (float)((y + 1) * _charHeight), _cursorColor, 2);
             }
             else
             {
-                ds.FillRectangle((float)(x * _charWidth), (float)(y * _charHeight),
+                ds.FillRectangle(xPos, yPos,
                     (float)_charWidth, (float)_charHeight, _cursorColor);
                 Color inverted = Color.FromArgb(_cursorColor.A, _defaultBg.R, _defaultBg.G, _defaultBg.B);
-                ds.DrawText(text, (float)(x * _charWidth), (float)(y * _charHeight), inverted, _textFormat);
+                ds.DrawText(text, xPos, yPos, inverted, _textFormat);
             }
         }
 
@@ -1155,7 +1227,11 @@ else if (settings.ColorScheme == "Termark Light")
         {
             float xPos = (float)(startX * _charWidth);
             float yPos = (float)(y * _charHeight);
+            DrawChunkAt(ds, text, xPos, yPos, attr, logicalWidth);
+        }
 
+        private void DrawChunkAt(CanvasDrawingSession ds, string text, float xPos, float yPos, TerminalCell attr, int logicalWidth)
+        {
             // Always fill background — use _defaultBg for cells with no explicit background.
             // This ensures no transparent gaps and isolates the terminal from app theme changes.
             Color bg = ParseColor(attr.BgColor, _defaultBg);
@@ -1333,7 +1409,7 @@ else if (settings.ColorScheme == "Termark Light")
 
             var point = e.GetCurrentPoint(this);
             int delta = point.Properties.MouseWheelDelta;
-            int scrollLines = -(delta / 40); // 120 per notch is typical -> 3 lines per notch
+            int scrollLines = delta / 40; // 120 per notch is typical -> 3 lines per notch
 
             int newOffset = _scrollOffset + scrollLines;
             if (newOffset < 0) newOffset = 0;

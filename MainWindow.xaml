@@ -124,7 +124,7 @@
                         </ListView>
 
                         <!-- Bottom toolbar -->
-                        <StackPanel Grid.Row="3" Orientation="Horizontal" Padding="8,4,8,8" Spacing="4">
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" Padding="8,4,8,8" Spacing="4" Visibility="Collapsed">
                             <Button x:Name="PaneAddConnectionButton" Click="PaneAddConnectionButton_Click"
                                     ToolTipService.ToolTip="新建连接" Style="{ThemeResource AccentButtonStyle}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -144,7 +144,7 @@
                     </Grid>
                 </NavigationView.PaneCustomContent>
 
-                <!-- Pane Footer: SFTP + Theme toggle + Settings -->
+                <!-- Pane Footer: SFTP + Settings -->
                 <NavigationView.PaneFooter>
                     <StackPanel Spacing="2" Padding="4,0,4,4">
                         <NavigationViewItem x:Name="SftpNavItem"
@@ -154,17 +154,6 @@
                                             ToolTipService.ToolTip="打开 SFTP 文件管理">
                             <NavigationViewItem.Icon>
                                 <FontIcon Glyph="&#xE8B7;" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
-                            </NavigationViewItem.Icon>
-                        </NavigationViewItem>
-                        <NavigationViewItem x:Name="ThemeToggleNavItem"
-                                            Tapped="ThemeToggleNavItem_Tapped"
-                                            Content="浅色/深色模式"
-                                            Tag="theme_toggle"
-                                            ToolTipService.ToolTip="切换应用主题"
-                                            PointerEntered="ThemeToggleNavItem_PointerEntered"
-                                            PointerExited="ThemeToggleNavItem_PointerExited">
-                            <NavigationViewItem.Icon>
-                                <FontIcon x:Name="ThemeToggleIcon" Glyph="&#xE706;" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                             </NavigationViewItem.Icon>
                         </NavigationViewItem>
                         <NavigationViewItem x:Name="SettingsNavItem"
@@ -200,6 +189,23 @@
                     Padding="0"
                     Click="GlobalToggleSidebarButton_Click" ToolTipService.ToolTip="切换终端工具箱">
                 <FontIcon Glyph="&#xE90D;" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+            </Button>
+
+            <!-- Floating theme toggle, shown when the hamburger pane is open -->
+            <Button x:Name="FloatingThemeToggleButton"
+                    VerticalAlignment="Top" HorizontalAlignment="Left"
+                    Width="36" Height="36"
+                    Margin="252,6,0,0"
+                    CornerRadius="4"
+                    Visibility="Collapsed"
+                    Background="Transparent" BorderBrush="Transparent"
+                    Padding="0"
+                    Click="FloatingThemeToggleButton_Click"
+                    ToolTipService.ToolTip="切换主题">
+                <FontIcon x:Name="FloatingThemeToggleIcon"
+                          Glyph="&#xE706;"
+                          FontSize="18"
+                          Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
             </Button>
 
             <!-- Drag region for custom title bar -->
