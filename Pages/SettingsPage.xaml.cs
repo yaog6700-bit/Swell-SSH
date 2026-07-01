@@ -17,6 +17,7 @@ namespace SwellSSH.Pages
     public sealed partial class SettingsPage : Page
     {
         private readonly ConnectionStorage _storage = new();
+        private readonly BackupService _backup = new();
         private TerminalSettings _settings = new();
         private bool _isLoading;
 
@@ -171,12 +172,11 @@ namespace SwellSSH.Pages
             bool isSearching = !string.IsNullOrEmpty(query);
 
             // 不搜索时恢复全部显示
-
             if (!isSearching)
             {
                 FontSection.Visibility = CursorSection.Visibility =
-                    BackdropSection.Visibility = AboutSection.Visibility =
-                    Visibility.Visible;
+                    BackdropSection.Visibility = DataSection.Visibility =
+                    AboutSection.Visibility = Visibility.Visible;
                 NoResultsText.Visibility = Visibility.Collapsed;
                 return;
             }
@@ -184,10 +184,11 @@ namespace SwellSSH.Pages
             // 每个分区对应的匹配关键词（中英文混合）
             var sections = new (UIElement Section, string[] Keywords)[]
             {
-                (FontSection, new[] { "终端字体", "字体", "字号", "font", "consolas", "cascadia", "大小", "size" }),
-                (CursorSection, new[] { "光标样式", "光标", "cursor", "闪烁", "blink", "块状", "block", "下划线", "underline", "竖线", "bar" }),
-                (BackdropSection, new[] { "窗口背景", "背景", "材质", "mica", "acrylic", "backdrop", "透明", "毛玻璃" }),
-                (AboutSection, new[] { "关于", "版本", "更新", "about", "version", "update", "swellssh" }),
+                (FontSection,    new[] { "终端字体", "字体", "字号", "font", "consolas", "cascadia", "大小", "size" }),
+                (CursorSection,  new[] { "光标样式", "光标", "cursor", "闪烁", "blink", "块状", "block", "下划线", "underline", "竖线", "bar" }),
+                (BackdropSection,new[] { "窗口背景", "背景", "材质", "mica", "acrylic", "backdrop", "透明", "毛玻璃" }),
+                (DataSection,    new[] { "数据", "备份", "导出", "恢复", "backup", "export", "import", "restore", "迁移" }),
+                (AboutSection,   new[] { "关于", "版本", "更新", "about", "version", "update", "swellssh" }),
             };
 
             int visibleCount = 0;
@@ -344,6 +345,85 @@ namespace SwellSSH.Pages
                     XamlRoot = this.XamlRoot
                 };
                 await dialog.ShowAsync();
+            }
+        }
+
+        // ── 数据备份与恢复 ──────────────────────────────────────────────────
+
+        private async void ExportBackupButton_Click(object sender, RoutedEventArgs e)
+        {
+            ExportBackupButton.IsEnabled = false;
+            ExportBackupButton.Content = "正在导出…";
+            try
+            {
+                var result = await _backup.ExportAsync(MainWindow.Instance!);
+                if (result.IsCancelled) return;
+
+                var dialog = new ContentDialog
+                {
+                    Title           = result.IsSuccess ? "备份导出成功" : "备份导出失败",
+                    Content         = result.Message,
+                    CloseButtonText = "确定",
+                    XamlRoot        = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            finally
+            {
+                ExportBackupButton.IsEnabled = true;
+                ExportBackupButton.Content   = "导出备份";
+            }
+        }
+
+        private async void ImportBackupButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Confirm before overwriting
+            var confirmDialog = new ContentDialog
+            {
+                Title             = "确认恢复备份",
+                Content           = "恢复备份将覆盖当前全部连接配置、指令片段和终端设置，此操作不可撤销。\n\n是否继续？",
+                PrimaryButtonText = "确认恢复",
+                CloseButtonText   = "取消",
+                DefaultButton     = ContentDialogButton.Close,
+                XamlRoot          = this.XamlRoot
+            };
+            if (await confirmDialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            ImportBackupButton.IsEnabled = false;
+            ImportBackupButton.Content   = "正在恢复…";
+            try
+            {
+                var result = await _backup.ImportAsync(MainWindow.Instance!);
+                if (result.IsCancelled) return;
+
+                if (result.IsSuccess && result.NeedsReload)
+                {
+                    // Reload in-memory settings and notify
+                    _settings = await _storage.LoadSettingsAsync();
+                    _isLoading = true;
+                    ApplyToUi(_settings);
+                    await Task.Delay(50);
+                    _isLoading = false;
+                    TerminalSettings.NotifyGlobalSettingsChanged(_settings);
+
+                    // Ask MainPage to reload connection list
+                    MainWindow.Instance?.RequestConnectionsReload();
+                }
+
+                var dialog = new ContentDialog
+                {
+                    Title           = result.IsSuccess ? "备份恢复成功" : "备份恢复失败",
+                    Content         = result.Message,
+                    CloseButtonText = "确定",
+                    XamlRoot        = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            finally
+            {
+                ImportBackupButton.IsEnabled = true;
+                ImportBackupButton.Content   = "恢复备份";
             }
         }
     }

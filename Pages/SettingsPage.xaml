@@ -115,6 +115,44 @@
 
 
 
+            <!-- Data Management -->
+            <StackPanel x:Name="DataSection" Spacing="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="数据管理" FontSize="14" FontWeight="Medium" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                    <TextBlock Text="导出备份或从备份文件恢复全部连接配置与设置" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- Export -->
+                <Border Background="Transparent"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Width="550" HorizontalAlignment="Left">
+                    <Grid ColumnDefinitions="*,Auto" Padding="16,16" ColumnSpacing="12">
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="导出备份" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="将全部连接、片段及设置打包为 .swellbak 文件" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button x:Name="ExportBackupButton" Grid.Column="1" Content="导出备份" Padding="12,5" CornerRadius="4" Click="ExportBackupButton_Click" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Import -->
+                <Border Background="Transparent"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Width="550" HorizontalAlignment="Left">
+                    <Grid ColumnDefinitions="*,Auto" Padding="16,16" ColumnSpacing="12">
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="恢复备份" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="从 .swellbak 文件恢复，将覆盖当前全部配置" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button x:Name="ImportBackupButton" Grid.Column="1" Content="恢复备份" Padding="12,5" CornerRadius="4" Click="ImportBackupButton_Click" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
             <!-- About -->
             <StackPanel x:Name="AboutSection" Spacing="12">
                 <StackPanel Spacing="4">

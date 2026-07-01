@@ -338,6 +338,11 @@ namespace SwellSSH.Pages
             ServerMonitorService.Instance.Sync(profiles);
         }
 
+        /// <summary>
+        /// Public entry point used by backup restore to reload the full connection list from disk.
+        /// </summary>
+        public Task ReloadConnectionsAsync() => LoadConnectionsAsync();
+
         private void RefreshFlatSidebarList()
         {
             FlatSidebarItems.Clear();

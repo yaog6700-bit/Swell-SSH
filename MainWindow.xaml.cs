@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -267,6 +267,22 @@ namespace SwellSSH
                 };
                 _ = dialog.ShowAsync();
             }
+        }
+
+        /// <summary>
+        /// Asks MainPage to reload the full connection list from disk.
+        /// Called after a backup restore so the sidebar reflects the restored data.
+        /// </summary>
+        public void RequestConnectionsReload()
+        {
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                if (ContentFrame.Content is MainPage mainPage)
+                {
+                    await mainPage.ReloadConnectionsAsync();
+                    SyncPaneConnectionList();
+                }
+            });
         }
 
         // ── Theme System (ported from AnywhereWinUI) ─────────────────────────
