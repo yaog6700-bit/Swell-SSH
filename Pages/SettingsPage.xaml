@@ -114,6 +114,33 @@
 
 
 
+            <!-- AI Settings -->
+            <StackPanel x:Name="AiSection" Spacing="12">
+                <TextBlock Text="AI 助手" FontSize="14" FontWeight="Medium" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                <Border Background="Transparent" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Width="550" HorizontalAlignment="Left">
+                    <StackPanel>
+                        <!-- Environment -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Padding="16,16">
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock Text="当前 API 环境" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="选择或配置用于响应的 AI 服务模型" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="管理 API 环境" Click="ManageAiEnvs_Click" VerticalAlignment="Center"/>
+                        </Grid>
+                        
+                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="16,0"/>
+                        
+                        <!-- Context Line Count -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Padding="16,16">
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock Text="附加上下文行数" FontSize="14" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="发送给 AI 的终端最近输出行数" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <NumberBox x:Name="AiContextLineBox" Grid.Column="1" Width="120" Minimum="0" Maximum="1000" VerticalAlignment="Center" SpinButtonPlacementMode="Compact" ValueChanged="AiContextLineBox_ValueChanged"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <!-- Data Management -->
             <StackPanel x:Name="DataSection" Spacing="12">

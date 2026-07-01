@@ -222,6 +222,53 @@ namespace SwellSSH.Terminal
             }
         }
 
+        /// <summary>
+        /// Retrieves the most recent N lines of text from the buffer (including scrollback),
+        /// stripping all formatting. Used for AI context gathering.
+        /// </summary>
+        public string GetRecentLines(int lineCount)
+        {
+            lock (SyncRoot)
+            {
+                if (lineCount <= 0) return string.Empty;
+
+                var resultLines = new List<string>(lineCount);
+                
+                // 1. Gather from active display (bottom up)
+                for (int y = _lines.Count - 1; y >= 0 && resultLines.Count < lineCount; y--)
+                {
+                    string line = GetLineText(_lines[y]).TrimEnd();
+                    // Optional: skip completely empty lines at the very bottom if they are just trailing blank rows
+                    if (resultLines.Count == 0 && string.IsNullOrWhiteSpace(line) && y >= CursorY) continue;
+                    
+                    resultLines.Add(line);
+                }
+
+                // 2. Gather from scrollback (newest first)
+                int scrollIndex = Scrollback.Count - 1;
+                while (scrollIndex >= 0 && resultLines.Count < lineCount)
+                {
+                    string line = GetLineText(Scrollback[scrollIndex]).TrimEnd();
+                    resultLines.Add(line);
+                    scrollIndex--;
+                }
+
+                resultLines.Reverse();
+                return string.Join("\n", resultLines);
+            }
+        }
+
+        private string GetLineText(TerminalRow row)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int x = 0; x < Cols; x++)
+            {
+                char c = row.Cells[x].Char;
+                if (c != '\0') sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
         // ── ITerminalActionHandler Implementation ─────────────────────────────
 
         public void Print(ReadOnlySpan<char> text)

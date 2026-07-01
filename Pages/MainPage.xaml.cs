@@ -192,6 +192,9 @@ namespace SwellSSH.Pages
                 ServerMonitorService.Instance.StatsUpdated -= OnStatsUpdated;
             };
 
+            AiPane.CloseRequested += () => AiPaneContainer.Visibility = Visibility.Collapsed;
+            AiPane.SettingsRequested += () => { AiPaneContainer.Visibility = Visibility.Collapsed; OpenSettingsTab(); };
+
             SetupKeyboardShortcuts();
         }
 
@@ -1158,7 +1161,26 @@ namespace SwellSSH.Pages
         private void TerminalTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             UpdateSidebarToggleButtonState();
+            
+            if (TerminalTabView.SelectedItem is TabViewItem tab && tab.Tag is TerminalSession session)
+            {
+                AiPane.ActiveSession = session;
+            }
+            else
+            {
+                AiPane.ActiveSession = null;
+            }
+
             RestoreTerminalFocus();
+        }
+
+        private void AiButton_Click(object sender, RoutedEventArgs e)
+        {
+            AiPaneContainer.Visibility = AiPaneContainer.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            if (AiPaneContainer.Visibility == Visibility.Visible)
+            {
+                _ = AiPane.ReloadSettingsAsync();
+            }
         }
 
         public void RestoreTerminalFocus()
@@ -1391,10 +1413,14 @@ namespace SwellSSH.Pages
             var tabContainer = FindVisualChildByName(TerminalTabView, "TabContainerGrid");
             if (tabContainer != null)
             {
-                // Align Sidebar with exact height of the TabStrip (40px)
+                // Align Sidebar and AI Pane with exact height of the TabStrip (40px)
                 if (SidebarPaneGrid != null)
                 {
                     SidebarPaneGrid.Margin = new Thickness(0, 40, 0, 0);
+                }
+                if (AiPaneContainer != null)
+                {
+                    AiPaneContainer.Margin = new Thickness(0, 40, 0, 0);
                 }
             }
 

@@ -26,6 +26,7 @@ namespace SwellSSH.Services
             public string AppVersion { get; set; } = "";
             public List<ConnectionProfile> Connections { get; set; } = new();
             public TerminalSettings? Settings { get; set; }
+            public AISettings? AISettings { get; set; }
             public List<SnippetViewModel> Snippets { get; set; } = new();
         }
 
@@ -56,12 +57,14 @@ namespace SwellSSH.Services
                 // Collect data
                 var connections = await _storage.LoadConnectionsAsync();
                 var settings    = await _storage.LoadSettingsAsync();
+                var aiSettings  = await _storage.LoadAISettingsAsync();
                 var snippets    = await _storage.LoadSnippetsAsync();
 
                 var package = new BackupPackage
                 {
                     Connections = connections,
                     Settings    = settings,
+                    AISettings  = aiSettings,
                     Snippets    = snippets,
                     AppVersion  = GetAppVersion()
                 };
@@ -108,6 +111,9 @@ namespace SwellSSH.Services
 
                 if (package.Settings != null)
                     await _storage.SaveSettingsAsync(package.Settings);
+
+                if (package.AISettings != null)
+                    await _storage.SaveAISettingsAsync(package.AISettings);
 
                 if (package.Snippets != null)
                     await _storage.SaveSnippetsAsync(package.Snippets);

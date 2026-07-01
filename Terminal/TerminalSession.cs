@@ -142,6 +142,9 @@ namespace SwellSSH.Terminal
         public void SendText(string text) => Transport.SendInput(text);
         public void SendRaw(byte[] data)  => Transport.SendRaw(data);
 
+        public Task<string> ExecuteBackgroundCommandAsync(string command, int timeoutSeconds = 30)
+            => Transport.ExecuteBackgroundCommandAsync(command, timeoutSeconds);
+
         public void Resize(double pixelWidth, double pixelHeight,
                            double charWidth, double charHeight)
             => PtyBridge.OnViewResized(pixelWidth, pixelHeight, charWidth, charHeight, Transport);

@@ -285,6 +285,31 @@ namespace SwellSSH.Terminal
             cts?.Dispose();
         }
 
+        // ── Background Command Execution ──────────────────────────────────────
+
+        /// <summary>
+        /// Executes a command in a separate background channel over the same SSH connection.
+        /// This does not interfere with the interactive ShellStream and is used by the AI assistant.
+        /// </summary>
+        public async Task<string> ExecuteBackgroundCommandAsync(string command, int timeoutSeconds = 30)
+        {
+            if (_client == null || !IsConnected)
+                throw new InvalidOperationException("Not connected to SSH server.");
+
+            using var cmd = _client.CreateCommand(command);
+            cmd.CommandTimeout = TimeSpan.FromSeconds(timeoutSeconds);
+            
+            return await Task.Run(() => 
+            {
+                string result = cmd.Execute();
+                if (cmd.ExitStatus != 0 && string.IsNullOrWhiteSpace(result))
+                {
+                    result = cmd.Error;
+                }
+                return result;
+            });
+        }
+
         // ── Resize ────────────────────────────────────────────────────────────
 
         /// <summary>

@@ -27,6 +27,9 @@ namespace SwellSSH.Services
         private static readonly string SnippetsFile =
             Path.Combine(AppDataDir, "snippets.json");
 
+        private static readonly string AISettingsFile =
+            Path.Combine(AppDataDir, "ai_settings.json");
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true
@@ -82,6 +85,32 @@ namespace SwellSSH.Services
             Directory.CreateDirectory(AppDataDir);
             string json = JsonSerializer.Serialize(settings, JsonOptions);
             await File.WriteAllTextAsync(SettingsFile, json);
+        }
+
+        // ── AI Settings ─────────────────────────────────────────────────────────
+
+        public async Task<AISettings> LoadAISettingsAsync()
+        {
+            try
+            {
+                if (!File.Exists(AISettingsFile))
+                    return new AISettings();
+
+                string json = await File.ReadAllTextAsync(AISettingsFile);
+                return JsonSerializer.Deserialize<AISettings>(json, JsonOptions)
+                       ?? new AISettings();
+            }
+            catch
+            {
+                return new AISettings();
+            }
+        }
+
+        public async Task SaveAISettingsAsync(AISettings settings)
+        {
+            Directory.CreateDirectory(AppDataDir);
+            string json = JsonSerializer.Serialize(settings, JsonOptions);
+            await File.WriteAllTextAsync(AISettingsFile, json);
         }
 
         // ── Snippets ────────────────────────────────────────────────────────────

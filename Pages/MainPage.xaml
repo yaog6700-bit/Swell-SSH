@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:SwellSSH.Pages"
+    xmlns:controls="using:SwellSSH.Controls"
     xmlns:models="using:SwellSSH.Models"
     xmlns:ui="using:CommunityToolkit.WinUI.Controls"
     NavigationCacheMode="Required">
@@ -106,6 +107,9 @@
                             </TabView.TabStripHeader>
                             <TabView.TabStripFooter>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="2" Margin="0,0,4,0">
+                                    <Button x:Name="AiButton" Style="{ThemeResource AccentButtonStyle}" Padding="6,4" ToolTipService.ToolTip="AI Assistant" Click="AiButton_Click">
+                                        <FontIcon Glyph="&#xE99A;" FontSize="14"/>
+                                    </Button>
                                 </StackPanel>
                             </TabView.TabStripFooter>
                         </TabView>
@@ -393,6 +397,13 @@
                     </Grid>
                 </SplitView.Pane>
             </SplitView>
+            
+            <!-- AI Assistant Pane (Overlay Right) -->
+            <Grid x:Name="AiPaneContainer" Margin="0,28,0,0" HorizontalAlignment="Right" Width="350" Visibility="Collapsed" Background="{ThemeResource SidebarBackgroundBrush}">
+                <!-- Shadow applied by wrapping if needed, but Border is enough for now -->
+                <controls:AIAssistantPane x:Name="AiPane" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+            </Grid>
+
             <!-- ─ Settings Pane (Right side full coverage) ────────────────── -->
             <Grid x:Name="SettingsPaneHost" Visibility="Collapsed" Background="{ThemeResource SidebarBackgroundBrush}" BorderBrush="{ThemeResource SidebarBorderBrush}" BorderThickness="0">
                 <Grid.RowDefinitions>
